@@ -1,7 +1,11 @@
-pub mod http_parser {
-    use std::{collections::HashMap, io::Read, net::TcpStream};
+pub mod http_server {
+    use std::{
+        collections::HashMap,
+        io::{BufRead, BufReader, Write},
+        net::TcpStream,
+    };
 
-    pub struct HttpParser {
+    pub struct HttpServer {
         pub raw_stream: TcpStream,
         pub verb: String,
         pub protocol: String,
@@ -9,9 +13,9 @@ pub mod http_parser {
         pub headers: HashMap<String, String>,
     }
 
-    impl HttpParser {
-        pub fn new(raw_stream: TcpStream) -> HttpParser {
-            let mut parser: HttpParser = HttpParser {
+    impl HttpServer {
+        pub fn new(raw_stream: TcpStream) -> HttpServer {
+            let mut server = HttpServer {
                 raw_stream,
                 verb: String::new(),
                 protocol: String::new(),
@@ -19,21 +23,27 @@ pub mod http_parser {
                 headers: HashMap::new(),
             };
 
-            parser.get_lines();
-            parser.parse_verb_and_protocol();
-            parser.parse_headers();
+            server.get_lines();
+            server.parse_verb_and_protocol();
+            server.parse_headers();
 
-            parser
+            server
         }
 
         fn get_lines(&mut self) {
-            match self.raw_stream.read_to_string(&mut self.lines) {
-                Ok(_) => {}
-                Err(error) => {
-                    println!("Error reading string: {:?}", error);
-                    return;
-                }
-            };
+            let reader = BufReader::new(&mut self.raw_stream);
+            let request: Vec<_> = reader
+                .lines()
+                .map(|result| match result {
+                    Ok(string) => string,
+                    Err(error) => {
+                        println!("Error unpacking string from stream: {:?}", error);
+                        String::new()
+                    }
+                })
+                .take_while(|line| !line.is_empty())
+                .collect();
+            self.lines = request.join("\r\n");
         }
 
         fn parse_verb_and_protocol(&mut self) {
@@ -82,6 +92,16 @@ pub mod http_parser {
                 });
 
             println!("Headers: {:?}", self.headers);
+        }
+
+        pub fn response(&mut self, body: &str) {
+            let bytes = body.as_bytes();
+            match self.raw_stream.write_all(bytes) {
+                Ok(_) => (),
+                Err(error) => {
+                    println!("Error occurred while writing into stream: {:?}", error);
+                }
+            }
         }
     }
 }

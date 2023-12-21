@@ -1,17 +1,14 @@
-use std::collections::HashMap;
 use std::error::Error;
-use std::io::Read;
 use std::net::{TcpListener, TcpStream};
 
-use crate::http_parser::http_parser::HttpParser;
+use crate::http_server::http_server::HttpServer;
 
-mod http_parser;
+mod http_server;
 
 const HOST: &str = "127.0.0.1";
 const PORT: u32 = 8000;
 
 fn main() {
-    println!("Here");
     let hostname = format!("{}:{}", HOST.to_owned(), PORT);
     let listener = match TcpListener::bind(hostname.clone()) {
         Ok(listener) => listener,
@@ -29,7 +26,9 @@ fn main() {
 }
 
 fn process_stream(stream: TcpStream) {
-    let parser = HttpParser::new(stream);
+    let mut server = HttpServer::new(stream);
+    let body = String::from("HTTP/1.1 200 OK\r\n\r\n<html><body>Hello world!</body></html>");
+    server.response(&body);
 }
 
 fn process_error(error: &dyn Error) {
