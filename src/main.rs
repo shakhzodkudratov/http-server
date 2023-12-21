@@ -1,6 +1,11 @@
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::Read;
 use std::net::{TcpListener, TcpStream};
+
+use crate::http_parser::http_parser::HttpParser;
+
+mod http_parser;
 
 const HOST: &str = "127.0.0.1";
 const PORT: u32 = 8000;
@@ -17,23 +22,14 @@ fn main() {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => process_stream(&stream),
+            Ok(stream) => process_stream(stream),
             Err(error) => process_error(&error),
         }
     }
 }
 
-fn process_stream(mut stream: &TcpStream) {
-    let mut lines = String::new();
-    match stream.read_to_string(&mut lines) {
-        Ok(_) => {}
-        Err(error) => println!("Error reading string: {:?}", error),
-    }
-
-    lines.split("\n").for_each(|line| {
-        println!("Line {:?}", line);
-    });
-    // println!("Incoming stream: {:?}", lines);
+fn process_stream(stream: TcpStream) {
+    let parser = HttpParser::new(stream);
 }
 
 fn process_error(error: &dyn Error) {
